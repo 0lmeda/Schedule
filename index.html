@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0d17" />
+  <title>My Focus Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="bg-orb orb-1"></div>
+  <div class="bg-orb orb-2"></div>
+
+  <main class="app-shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">FOCUS DASHBOARD</p>
+        <h1>One thing at a time.</h1>
+        <p class="subtitle">Today first. The rest can wait until you need it.</p>
+      </div>
+      <div class="date-card">
+        <span id="todayName">Today</span>
+        <strong id="todayDate">—</strong>
+        <small id="liveClock">—</small>
+      </div>
+    </header>
+
+    <section class="toolbar" aria-label="Dashboard controls">
+      <div class="view-toggle">
+        <button class="toggle-btn active" data-view="dashboard">Dashboard</button>
+        <button class="toggle-btn" data-view="week">Full Week</button>
+      </div>
+      <div class="legend">
+        <span><i class="dot work"></i>Work</span>
+        <span><i class="dot school"></i>School</span>
+        <span><i class="dot fitness"></i>Gym</span>
+        <span><i class="dot personal"></i>Personal</span>
+      </div>
+    </section>
+
+    <section id="dashboardView" class="dashboard-view">
+      <section class="status-grid">
+        <article class="card focus-card">
+          <div class="card-kicker">RIGHT NOW</div>
+          <div id="currentBlock"></div>
+        </article>
+        <article class="card metric-card">
+          <div class="card-kicker">BEDTIME</div>
+          <strong id="bedtimeCountdown">—</strong>
+          <span>Target: 10:50 PM</span>
+        </article>
+        <article class="card metric-card">
+          <div class="card-kicker">TODAY</div>
+          <strong id="dayProgress">—</strong>
+          <span id="dayProgressLabel">planned blocks complete</span>
+        </article>
+      </section>
+
+      <section class="main-grid">
+        <div class="left-column">
+          <article class="card top3-card">
+            <div class="card-head">
+              <div>
+                <div class="card-kicker">PRIORITIES</div>
+                <h2>Top 3</h2>
+              </div>
+              <button id="resetTop3" class="text-btn" type="button">Reset</button>
+            </div>
+            <p class="muted">If these three get done, the day counts.</p>
+            <div id="top3List" class="top3-list"></div>
+          </article>
+
+          <article class="card today-card">
+            <div class="card-head">
+              <div>
+                <div class="card-kicker">SCHEDULE</div>
+                <h2 id="todayHeading">Today</h2>
+              </div>
+              <span id="blockCount" class="pill">0 blocks</span>
+            </div>
+            <div id="todayTimeline" class="timeline"></div>
+          </article>
+        </div>
+
+        <aside class="right-column">
+          <article class="card assignment-card">
+            <div class="card-head">
+              <div>
+                <div class="card-kicker">SCHOOL</div>
+                <h2>Assignments</h2>
+              </div>
+              <button id="showAssignmentForm" class="add-btn" type="button">+ Add</button>
+            </div>
+
+            <form id="assignmentForm" class="assignment-form hidden">
+              <input id="assignmentTitle" type="text" placeholder="Assignment" required />
+              <div class="form-row">
+                <input id="assignmentCourse" type="text" placeholder="Course" />
+                <input id="assignmentDate" type="date" required />
+              </div>
+              <div class="form-actions">
+                <button class="primary-btn" type="submit">Save</button>
+                <button id="cancelAssignment" class="secondary-btn" type="button">Cancel</button>
+              </div>
+            </form>
+
+            <div id="assignmentList" class="assignment-list"></div>
+          </article>
+
+          <article class="card sleep-card">
+            <div class="card-kicker">SLEEP</div>
+            <h2>8-hour target</h2>
+            <div class="sleep-row"><span>In bed</span><strong>10:30 PM</strong></div>
+            <div class="sleep-row"><span>Asleep</span><strong>10:50 PM</strong></div>
+            <div class="sleep-row"><span>Wake</span><strong>6:50 AM</strong></div>
+          </article>
+
+          <article class="card rule-card">
+            <div class="card-kicker">WHEN OVERWHELMED</div>
+            <p><strong>1.</strong> Look at “Right Now.”</p>
+            <p><strong>2.</strong> Ignore the rest.</p>
+            <p><strong>3.</strong> When it ends, come back.</p>
+          </article>
+        </aside>
+      </section>
+    </section>
+
+    <section id="weekView" class="week-view hidden"></section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
