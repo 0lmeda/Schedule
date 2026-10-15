@@ -1,134 +1,111 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#0a0d17" />
-  <title>My Focus Dashboard</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b1020">
+  <title>Focus Dashboard</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="bg-orb orb-1"></div>
-  <div class="bg-orb orb-2"></div>
+  <section id="lockScreen" class="lock-screen">
+    <div class="lock-card">
+      <div class="logo">F</div>
+      <p class="eyebrow">PERSONAL DASHBOARD</p>
+      <h1 id="lockTitle">Welcome</h1>
+      <p id="lockText" class="muted">Enter your PIN to open the dashboard.</p>
+      <form id="pinForm">
+        <input id="pinInput" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" placeholder="4–8 digit PIN" required>
+        <button class="primary" type="submit" id="pinButton">Unlock</button>
+      </form>
+      <p id="pinError" class="error"></p>
+      <p class="tiny">Local dashboard lock.</p>
+    </div>
+  </section>
 
-  <main class="app-shell">
-    <header class="hero">
+  <main id="app" class="app hidden">
+    <header class="topbar">
       <div>
         <p class="eyebrow">FOCUS DASHBOARD</p>
         <h1>One thing at a time.</h1>
-        <p class="subtitle">Today first. The rest can wait until you need it.</p>
+        <p class="muted" id="dateLine">—</p>
       </div>
-      <div class="date-card">
-        <span id="todayName">Today</span>
-        <strong id="todayDate">—</strong>
-        <small id="liveClock">—</small>
+      <div class="header-actions">
+        <button class="ghost" id="weekBtn">Calendar</button>
+        <button class="ghost" id="lockBtn">Lock</button>
       </div>
     </header>
 
-    <section class="toolbar" aria-label="Dashboard controls">
-      <div class="view-toggle">
-        <button class="toggle-btn active" data-view="dashboard">Dashboard</button>
-        <button class="toggle-btn" data-view="week">Full Week</button>
+    <section id="dashboardView">
+      <div class="status-grid">
+        <article class="card now-card"><p class="label">RIGHT NOW</p><div id="nowBlock"></div></article>
+        <article class="card metric"><p class="label">NEXT</p><strong id="nextBlock">—</strong><span id="nextTime">—</span></article>
+        <article class="card metric"><p class="label">BEDTIME</p><strong id="bedtimeCount">—</strong><span>Target 10:50 PM</span></article>
       </div>
-      <div class="legend">
-        <span><i class="dot work"></i>Work</span>
-        <span><i class="dot school"></i>School</span>
-        <span><i class="dot fitness"></i>Gym</span>
-        <span><i class="dot personal"></i>Personal</span>
-      </div>
-    </section>
 
-    <section id="dashboardView" class="dashboard-view">
-      <section class="status-grid">
-        <article class="card focus-card">
-          <div class="card-kicker">RIGHT NOW</div>
-          <div id="currentBlock"></div>
-        </article>
-        <article class="card metric-card">
-          <div class="card-kicker">BEDTIME</div>
-          <strong id="bedtimeCountdown">—</strong>
-          <span>Target: 10:50 PM</span>
-        </article>
-        <article class="card metric-card">
-          <div class="card-kicker">TODAY</div>
-          <strong id="dayProgress">—</strong>
-          <span id="dayProgressLabel">planned blocks complete</span>
-        </article>
-      </section>
-
-      <section class="main-grid">
-        <div class="left-column">
-          <article class="card top3-card">
-            <div class="card-head">
-              <div>
-                <div class="card-kicker">PRIORITIES</div>
-                <h2>Top 3</h2>
-              </div>
-              <button id="resetTop3" class="text-btn" type="button">Reset</button>
-            </div>
-            <p class="muted">If these three get done, the day counts.</p>
-            <div id="top3List" class="top3-list"></div>
+      <div class="main-grid">
+        <div class="column">
+          <article class="card">
+            <div class="card-head"><div><p class="label">PRIORITIES</p><h2>Top 3</h2></div><button class="link-btn" id="clearTop3">Clear</button></div>
+            <div id="top3"></div>
           </article>
 
-          <article class="card today-card">
-            <div class="card-head">
-              <div>
-                <div class="card-kicker">SCHEDULE</div>
-                <h2 id="todayHeading">Today</h2>
-              </div>
-              <span id="blockCount" class="pill">0 blocks</span>
-            </div>
-            <div id="todayTimeline" class="timeline"></div>
+          <article class="card">
+            <div class="card-head"><div><p class="label">TODAY</p><h2>Schedule</h2></div><div class="header-actions"><span class="pill" id="todayCount">0 blocks</span><button class="add" id="addBlock">+ Block</button></div></div>
+            <form id="blockForm" class="assignment-form hidden">
+              <input id="blockActivity" placeholder="Activity" required>
+              <div class="time-row"><input id="blockStart" type="time" required><input id="blockEnd" type="time" required></div>
+              <select id="blockCategory"><option value="school">School</option><option value="work">Work</option><option value="fitness">Gym</option><option value="meal">Meal</option><option value="personal">Personal</option><option value="free">Free</option></select>
+              <div class="form-actions"><button class="primary" type="submit">Add block</button><button class="ghost" type="button" id="cancelBlock">Cancel</button></div>
+            </form>
+            <div id="todaySchedule" class="timeline"></div>
           </article>
         </div>
 
-        <aside class="right-column">
-          <article class="card assignment-card">
-            <div class="card-head">
-              <div>
-                <div class="card-kicker">SCHOOL</div>
-                <h2>Assignments</h2>
-              </div>
-              <button id="showAssignmentForm" class="add-btn" type="button">+ Add</button>
-            </div>
-
-            <form id="assignmentForm" class="assignment-form hidden">
-              <input id="assignmentTitle" type="text" placeholder="Assignment" required />
-              <div class="form-row">
-                <input id="assignmentCourse" type="text" placeholder="Course" />
-                <input id="assignmentDate" type="date" required />
-              </div>
-              <div class="form-actions">
-                <button class="primary-btn" type="submit">Save</button>
-                <button id="cancelAssignment" class="secondary-btn" type="button">Cancel</button>
-              </div>
-            </form>
-
-            <div id="assignmentList" class="assignment-list"></div>
+        <div class="column side">
+          <article class="card pomodoro-card">
+            <div class="card-head"><div><p class="label">FOCUS TIMER</p><h2>Pomodoro</h2></div><span class="pill" id="pomodoroSessions">0 today</span></div>
+            <div class="timer-ring"><div><strong id="timerDisplay">25:00</strong><span id="timerMode">Focus</span></div></div>
+            <div class="mode-buttons"><button data-mode="focus" class="mode active">25 Focus</button><button data-mode="shortBreak" class="mode">5 Break</button><button data-mode="longBreak" class="mode">15 Long</button></div>
+            <div class="timer-actions"><button id="timerStart" class="primary">Start</button><button id="timerReset" class="ghost">Reset</button></div>
           </article>
 
-          <article class="card sleep-card">
-            <div class="card-kicker">SLEEP</div>
-            <h2>8-hour target</h2>
-            <div class="sleep-row"><span>In bed</span><strong>10:30 PM</strong></div>
-            <div class="sleep-row"><span>Asleep</span><strong>10:50 PM</strong></div>
-            <div class="sleep-row"><span>Wake</span><strong>6:50 AM</strong></div>
+          <article class="card">
+            <div class="card-head"><div><p class="label">TASKS</p><h2>Quick tasks</h2></div><button class="add" id="addTask">+ Add</button></div>
+            <form id="taskForm" class="assignment-form hidden"><input id="taskTitle" placeholder="Task" required><div class="form-actions"><button class="primary" type="submit">Save</button><button class="ghost" type="button" id="cancelTask">Cancel</button></div></form>
+            <div id="tasks"></div>
           </article>
 
-          <article class="card rule-card">
-            <div class="card-kicker">WHEN OVERWHELMED</div>
-            <p><strong>1.</strong> Look at “Right Now.”</p>
-            <p><strong>2.</strong> Ignore the rest.</p>
-            <p><strong>3.</strong> When it ends, come back.</p>
+          <article class="card">
+            <div class="card-head"><div><p class="label">SCHOOL</p><h2>Assignments</h2></div><button class="add" id="addAssignment">+ Add</button></div>
+            <form id="assignmentForm" class="assignment-form hidden"><input id="assignmentTitle" placeholder="Assignment" required><input id="assignmentCourse" placeholder="Course"><input id="assignmentDate" type="date" required><div class="form-actions"><button class="primary" type="submit">Save</button><button class="ghost" type="button" id="cancelAssignment">Cancel</button></div></form>
+            <div id="assignments"></div>
           </article>
-        </aside>
-      </section>
+        </div>
+      </div>
     </section>
 
-    <section id="weekView" class="week-view hidden"></section>
+    <section id="weekView" class="hidden">
+      <div class="week-head">
+        <div><p class="label">CALENDAR</p><h2>Your schedule</h2><p class="muted" id="weekRange">—</p></div>
+        <div class="header-actions"><button class="ghost" id="prevMonth" type="button">←</button><button class="ghost" id="todayMonth" type="button">Today</button><button class="ghost" id="nextMonth" type="button">→</button><button class="ghost" id="backBtn" type="button">Back</button></div>
+      </div>
+
+      <div class="calendar-weekdays" aria-hidden="true"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
+      <div id="weekGrid" class="calendar-grid"></div>
+
+      <form id="weekBlockForm" class="card week-block-form hidden">
+        <div class="card-head"><div><p class="label">ADD BLOCK</p><h2 id="selectedDateLabel">Selected day</h2></div></div>
+        <input id="weekBlockDate" type="hidden">
+        <div class="week-form-grid calendar-form-grid">
+          <input id="weekBlockActivity" placeholder="Activity" required>
+          <input id="weekBlockStart" type="time" required>
+          <input id="weekBlockEnd" type="time" required>
+          <select id="weekBlockCategory"><option value="school">School</option><option value="work">Work</option><option value="fitness">Gym</option><option value="meal">Meal</option><option value="personal">Personal</option><option value="free">Free</option></select>
+        </div>
+        <div class="form-actions"><button class="primary" type="submit">Add block</button><button class="ghost" type="button" id="cancelWeekBlock">Cancel</button></div>
+      </form>
+    </section>
   </main>
 
   <script src="app.js"></script>
