@@ -1,0 +1,12 @@
+{
+  "settings": {
+    "wakeUp": "06:50",
+    "bedtime": "22:50",
+    "inBed": "22:30",
+    "pomodoro": {
+      "focus": 25,
+      "shortBreak": 5,
+      "longBreak": 15
+    }
+  }
+}
