@@ -21,8 +21,18 @@ const MIME = {
   '.ico': 'image/x-icon'
 };
 
+function noCacheHeaders(contentType) {
+  return {
+    'Content-Type': contentType,
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+    'Surrogate-Control': 'no-store'
+  };
+}
+
 function sendJson(res, status, value) {
-  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
+  res.writeHead(status, noCacheHeaders('application/json; charset=utf-8'));
   res.end(JSON.stringify(value));
 }
 
@@ -81,13 +91,24 @@ function serveStatic(reqPath, res) {
   const file = path.join(ROOT, safePath);
 
   if (file.startsWith(path.join(ROOT, 'data')) || file === path.join(ROOT, 'server.js')) {
-    res.writeHead(404); res.end('Not found'); return;
+    res.writeHead(404, noCacheHeaders('text/plain; charset=utf-8'));
+    res.end('Not found');
+    return;
   }
-  if (!file.startsWith(ROOT)) { res.writeHead(403); res.end('Forbidden'); return; }
+  if (!file.startsWith(ROOT)) {
+    res.writeHead(403, noCacheHeaders('text/plain; charset=utf-8'));
+    res.end('Forbidden');
+    return;
+  }
 
   fs.stat(file, (err, stat) => {
-    if (err || !stat.isFile()) { res.writeHead(404); res.end('Not found'); return; }
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream' });
+    if (err || !stat.isFile()) {
+      res.writeHead(404, noCacheHeaders('text/plain; charset=utf-8'));
+      res.end('Not found');
+      return;
+    }
+    const type = MIME[path.extname(file).toLowerCase()] || 'application/octet-stream';
+    res.writeHead(200, noCacheHeaders(type));
     fs.createReadStream(file).pipe(res);
   });
 }
