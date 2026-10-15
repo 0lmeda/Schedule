@@ -1,361 +1,56 @@
-const schedule = {
-  Monday: [],
-  Tuesday: [
-    ["8:00 AM","11:30 AM","WORK"], ["11:30 AM","12:30 PM","EAT"],
-    ["12:30 PM","2:00 PM","Assembly"], ["2:00 PM","3:30 PM","History"],
-    ["3:30 PM","5:00 PM","Paco"], ["5:00 PM","5:30 PM","Eat"],
-    ["5:30 PM","6:00 PM","Programming"], ["6:00 PM","8:00 PM","Gym"],
-    ["8:00 PM","9:30 PM","Assembly"], ["9:30 PM","10:30 PM","Call"],
-    ["10:30 PM","11:00 PM","GTS"]
-  ],
-  Wednesday: [
-    ["7:00 AM","7:30 AM","Shower"], ["7:30 AM","8:00 AM","Cook"],
-    ["8:00 AM","9:30 AM","Researching"], ["9:30 AM","10:00 AM","Game"],
-    ["10:00 AM","11:30 AM","POLS"], ["11:30 AM","12:30 PM","EAT"],
-    ["12:30 PM","2:00 PM","Web Dev"], ["2:00 PM","3:30 PM","F Math"],
-    ["3:30 PM","4:30 PM","Study Math"], ["4:30 PM","5:00 PM","GTC"],
-    ["5:00 PM","6:30 PM","POLS"], ["6:30 PM","7:30 PM","EAT"],
-    ["7:30 PM","9:00 PM","GYM"], ["9:00 PM","9:30 PM","HW"],
-    ["9:30 PM","10:30 PM","Call"], ["10:30 PM","11:00 PM","GTS"]
-  ],
-  Thursday: [
-    ["8:00 AM","11:30 AM","Work"], ["11:30 AM","12:30 PM","EAT"],
-    ["12:30 PM","2:00 PM","Assembly"], ["2:00 PM","3:30 PM","History"],
-    ["3:30 PM","5:00 PM","Study History"], ["5:00 PM","5:30 PM","Eat"],
-    ["5:30 PM","6:00 PM","Read"], ["6:00 PM","8:00 PM","Gym"],
-    ["8:00 PM","9:00 PM","Free time"], ["9:00 PM","9:30 PM","HW"],
-    ["9:30 PM","10:30 PM","Call"], ["10:30 PM","11:00 PM","GTS"]
-  ],
-  Friday: [
-    ["8:00 AM","5:30 PM","Work"], ["5:30 PM","6:30 PM","Eat"],
-    ["6:30 PM","8:30 PM","Gym"], ["8:30 PM","9:30 PM","Read"],
-    ["9:30 PM","10:30 PM","Call"], ["10:30 PM","11:00 PM","GTS"]
-  ],
-  Saturday: [
-    ["7:30 AM","9:00 AM","Cook / Web"], ["9:00 AM","10:00 AM","Researching"],
-    ["10:00 AM","1:00 PM","Work"], ["1:00 PM","1:30 PM","Eat"],
-    ["1:30 PM","2:00 PM","Game"], ["2:00 PM","3:30 PM","POLS"],
-    ["3:30 PM","4:30 PM","Clean Up"]
-  ],
-  Sunday: []
-};
-
-const schoolWords = ["assembly","history","histoy","pols","math","programming","web dev","researching","gtc","hw","study"];
-const workWords = ["work"];
-const fitnessWords = ["gym"];
-const mealWords = ["eat","cook"];
-const freeWords = ["free","game"];
-
-const STORAGE = {
-  top3: "focusDashboard.top3",
-  assignments: "focusDashboard.assignments"
-};
-
-function category(name) {
-  const n = name.toLowerCase();
-  if (workWords.some(x => n.includes(x))) return "work";
-  if (fitnessWords.some(x => n.includes(x))) return "fitness";
-  if (mealWords.some(x => n.includes(x))) return "meal";
-  if (schoolWords.some(x => n.includes(x))) return "school";
-  if (freeWords.some(x => n.includes(x))) return "free";
-  return "personal";
+const FIXED_PIN="1935";
+const LS={unlocked:"focus.unlocked",top3:"focus.top3",assignments:"focus.assignments",tasks:"focus.tasks",pomo:"focus.pomodoro"};
+let config=null,timer=null,timerMode="focus",timerLeft=25*60,timerTotal=25*60,timerRunning=false,timerEndsAt=0;
+let calendarMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1),calendarCache={};
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const load=(k,f)=>{try{return JSON.parse(localStorage.getItem(k))??f}catch{return f}};
+const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+function parse(t,base=new Date()){const [h,m]=t.split(":").map(Number),d=new Date(base);d.setHours(h,m,0,0);return d}
+function nice(t){const [h,m]=t.split(":").map(Number),ampm=h>=12?"PM":"AM",hh=h%12||12;return `${hh}:${String(m).padStart(2,"0")} ${ampm}`}
+function duration(ms){const min=Math.max(0,Math.floor(ms/60000)),h=Math.floor(min/60),m=min%60;return h?`${h}h ${m}m`:`${m}m`}
+function dateKey(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
+function dateFromKey(key){const [y,m,d]=key.split("-").map(Number);return new Date(y,m-1,d)}
+function todayKey(){return dateKey(new Date())}
+function getDayEvents(key){return calendarCache[key]||[]}
+async function loadDay(key){const r=await fetch(`/api/calendar/${key}`,{cache:"no-store"});if(!r.ok)throw Error("Could not load calendar date");calendarCache[key]=await r.json();return calendarCache[key]}
+async function loadMonth(month){const r=await fetch(`/api/calendar?month=${month}`,{cache:"no-store"});if(!r.ok)throw Error("Could not load calendar month");Object.keys(calendarCache).filter(k=>k.startsWith(month+"-")).forEach(k=>delete calendarCache[k]);Object.assign(calendarCache,await r.json())}
+async function saveDayEvents(key,events){const r=await fetch(`/api/calendar/${key}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(events)});if(!r.ok)throw Error("Could not save calendar date");calendarCache[key]=events}
+async function boot(){try{config=await fetch("schedule.json",{cache:"no-store"}).then(r=>{if(!r.ok)throw Error();return r.json()})}catch{$("#lockText").textContent="Could not load schedule.json.";return}setupLock();setupUI();if(sessionStorage.getItem(LS.unlocked)==="1")unlock()}
+function setupLock(){$("#lockTitle").textContent="Welcome back";$("#lockText").textContent="Enter your PIN to open the dashboard.";$("#pinButton").textContent="Unlock";$("#pinForm").addEventListener("submit",e=>{e.preventDefault();const pin=$("#pinInput").value.trim();if(pin===FIXED_PIN){sessionStorage.setItem(LS.unlocked,"1");unlock()}else pinError("Wrong PIN.")})}
+function pinError(msg){$("#pinError").textContent=msg;$(".lock-card").classList.remove("shake");void $(".lock-card").offsetWidth;$(".lock-card").classList.add("shake")}
+function unlock(){$("#lockScreen").classList.add("hidden");$("#app").classList.remove("hidden");$("#pinInput").value="";renderAll().catch(()=>alert("Could not load calendar data from Node.js."))}
+function lock(){sessionStorage.removeItem(LS.unlocked);$("#app").classList.add("hidden");$("#lockScreen").classList.remove("hidden");$("#pinError").textContent=""}
+function setupUI(){
+  $("#lockBtn").onclick=lock;
+  $("#weekBtn").onclick=()=>{$("#dashboardView").classList.add("hidden");$("#weekView").classList.remove("hidden");calendarMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1);renderCalendar().catch(()=>alert("Could not load calendar."))};
+  $("#backBtn").onclick=()=>{$("#weekView").classList.add("hidden");$("#dashboardView").classList.remove("hidden")};
+  $("#prevMonth").onclick=()=>{calendarMonth=new Date(calendarMonth.getFullYear(),calendarMonth.getMonth()-1,1);$("#weekBlockForm").classList.add("hidden");renderCalendar().catch(()=>alert("Could not load calendar."))};
+  $("#nextMonth").onclick=()=>{calendarMonth=new Date(calendarMonth.getFullYear(),calendarMonth.getMonth()+1,1);$("#weekBlockForm").classList.add("hidden");renderCalendar().catch(()=>alert("Could not load calendar."))};
+  $("#todayMonth").onclick=()=>{calendarMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1);renderCalendar().catch(()=>alert("Could not load calendar."))};
+  setupTop3();setupTasks();setupAssignments();setupBlocks();setupCalendarBlocks();setupPomodoro();
+  setInterval(()=>{renderClockParts();renderToday()},30000)
 }
-
-function parseTime(label, base = new Date()) {
-  const [clock, meridiem] = label.split(" ");
-  let [h, m] = clock.split(":").map(Number);
-  if (meridiem === "PM" && h !== 12) h += 12;
-  if (meridiem === "AM" && h === 12) h = 0;
-  const d = new Date(base);
-  d.setHours(h, m, 0, 0);
-  return d;
-}
-
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
-function getTodayName() {
-  return new Date().toLocaleDateString("en-US", { weekday: "long" });
-}
-
-function formatDuration(ms) {
-  const totalMinutes = Math.max(0, Math.floor(ms / 60000));
-  const h = Math.floor(totalMinutes / 60);
-  const m = totalMinutes % 60;
-  if (h === 0) return `${m}m`;
-  return `${h}h ${m}m`;
-}
-
-function getCurrentState(dayName = getTodayName()) {
-  const events = schedule[dayName] || [];
-  const now = new Date();
-  const currentIndex = events.findIndex(([start, end]) => now >= parseTime(start) && now < parseTime(end));
-  const nextIndex = events.findIndex(([start]) => parseTime(start) > now);
-  return { events, now, currentIndex, nextIndex };
-}
-
-function renderCurrentBlock() {
-  const { events, now, currentIndex, nextIndex } = getCurrentState();
-  const target = document.getElementById("currentBlock");
-
-  if (!events.length) {
-    target.innerHTML = `<strong class="focus-title">Open day</strong><span class="focus-sub">No fixed blocks scheduled today.</span>`;
-    return;
-  }
-
-  if (currentIndex !== -1) {
-    const [start, end, name] = events[currentIndex];
-    const remaining = parseTime(end) - now;
-    target.innerHTML = `
-      <div class="focus-row"><i class="big-dot category-${category(name)}"></i><strong class="focus-title">${escapeHtml(name)}</strong></div>
-      <span class="focus-sub">${start} – ${end}</span>
-      <div class="focus-countdown">${formatDuration(remaining)} left</div>`;
-    return;
-  }
-
-  if (nextIndex !== -1) {
-    const [start, end, name] = events[nextIndex];
-    const until = parseTime(start) - now;
-    target.innerHTML = `
-      <div class="focus-row"><i class="big-dot category-${category(name)}"></i><strong class="focus-title">${escapeHtml(name)}</strong></div>
-      <span class="focus-sub">Next · ${start} – ${end}</span>
-      <div class="focus-countdown">Starts in ${formatDuration(until)}</div>`;
-    return;
-  }
-
-  target.innerHTML = `<strong class="focus-title">Done for today</strong><span class="focus-sub">No more planned blocks.</span>`;
-}
-
-function renderToday() {
-  const dayName = getTodayName();
-  const { events, currentIndex } = getCurrentState(dayName);
-  document.getElementById("todayHeading").textContent = dayName;
-  document.getElementById("blockCount").textContent = `${events.length} block${events.length === 1 ? "" : "s"}`;
-
-  const list = events.length ? events.map(([start, end, name], i) => {
-    const cat = category(name);
-    const finished = new Date() >= parseTime(end);
-    return `<div class="event category-${cat} ${i === currentIndex ? "current" : ""} ${finished ? "finished" : ""}">
-      <div class="event-time">${start}</div>
-      <div class="event-bar"></div>
-      <div class="event-copy">
-        <strong>${escapeHtml(name)}</strong>
-        <small>${start} – ${end}${i === currentIndex ? " · now" : ""}</small>
-      </div>
-      <div class="event-status">${finished ? "✓" : ""}</div>
-    </div>`;
-  }).join("") : `<p class="empty-day">Nothing fixed today. Use the open space intentionally.</p>`;
-
-  document.getElementById("todayTimeline").innerHTML = list;
-
-  const finishedCount = events.filter(([, end]) => new Date() >= parseTime(end)).length;
-  const pct = events.length ? Math.round((finishedCount / events.length) * 100) : 0;
-  document.getElementById("dayProgress").textContent = `${pct}%`;
-  document.getElementById("dayProgressLabel").textContent = events.length ? `${finishedCount} of ${events.length} planned blocks complete` : "open day";
-}
-
-function renderWeek() {
-  const html = Object.entries(schedule).map(([day, events]) => `
-    <article class="day-card ${day === getTodayName() ? "today-day" : ""}">
-      <div class="day-header"><h2>${day}</h2><span>${events.length} blocks</span></div>
-      <div class="day-events">
-        ${events.length ? events.map(([start, end, name]) => {
-          const cat = category(name);
-          return `<div class="mini-event"><div class="top"><i class="badge category-${cat}"></i><strong>${escapeHtml(name)}</strong></div><time>${start} – ${end}</time></div>`;
-        }).join("") : `<div class="empty-day">Open / unscheduled</div>`}
-      </div>
-    </article>`).join("");
-  document.getElementById("weekView").innerHTML = html;
-}
-
-function loadTop3() {
-  try {
-    const stored = JSON.parse(localStorage.getItem(STORAGE.top3));
-    if (Array.isArray(stored) && stored.length === 3) return stored;
-  } catch (_) {}
-  return [
-    { text: "", done: false },
-    { text: "", done: false },
-    { text: "", done: false }
-  ];
-}
-
-function saveTop3(items) {
-  localStorage.setItem(STORAGE.top3, JSON.stringify(items));
-}
-
-function renderTop3() {
-  const items = loadTop3();
-  document.getElementById("top3List").innerHTML = items.map((item, i) => `
-    <label class="priority-item ${item.done ? "done" : ""}">
-      <input class="priority-check" data-index="${i}" type="checkbox" ${item.done ? "checked" : ""} />
-      <span class="priority-number">${i + 1}</span>
-      <input class="priority-input" data-index="${i}" type="text" value="${escapeHtml(item.text)}" placeholder="Priority ${i + 1}" />
-    </label>`).join("");
-
-  document.querySelectorAll(".priority-input").forEach(input => {
-    input.addEventListener("input", e => {
-      const updated = loadTop3();
-      updated[Number(e.target.dataset.index)].text = e.target.value;
-      saveTop3(updated);
-    });
-  });
-
-  document.querySelectorAll(".priority-check").forEach(check => {
-    check.addEventListener("change", e => {
-      const updated = loadTop3();
-      updated[Number(e.target.dataset.index)].done = e.target.checked;
-      saveTop3(updated);
-      renderTop3();
-    });
-  });
-}
-
-function loadAssignments() {
-  try {
-    const stored = JSON.parse(localStorage.getItem(STORAGE.assignments));
-    return Array.isArray(stored) ? stored : [];
-  } catch (_) {
-    return [];
-  }
-}
-
-function saveAssignments(items) {
-  localStorage.setItem(STORAGE.assignments, JSON.stringify(items));
-}
-
-function dateStatus(dateText) {
-  const due = new Date(`${dateText}T23:59:59`);
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const dueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate());
-  const days = Math.round((dueDay - today) / 86400000);
-  if (days < 0) return { label: `${Math.abs(days)}d overdue`, cls: "overdue" };
-  if (days === 0) return { label: "Due today", cls: "urgent" };
-  if (days === 1) return { label: "Due tomorrow", cls: "urgent" };
-  if (days <= 3) return { label: `${days}d left`, cls: "soon" };
-  return { label: `${days}d left`, cls: "normal" };
-}
-
-function formatDueDate(dateText) {
-  return new Date(`${dateText}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-function renderAssignments() {
-  const items = loadAssignments().sort((a, b) => a.date.localeCompare(b.date));
-  const list = document.getElementById("assignmentList");
-
-  if (!items.length) {
-    list.innerHTML = `<div class="assignment-empty"><strong>No deadlines added.</strong><span>Add only the assignments you actually need to track.</span></div>`;
-    return;
-  }
-
-  list.innerHTML = items.map((item, i) => {
-    const status = dateStatus(item.date);
-    return `<div class="assignment-item ${item.done ? "assignment-done" : ""}">
-      <button class="assignment-check" data-id="${item.id}" title="Mark complete">${item.done ? "✓" : ""}</button>
-      <div class="assignment-main">
-        <strong>${escapeHtml(item.title)}</strong>
-        <span>${escapeHtml(item.course || "School")} · ${formatDueDate(item.date)}</span>
-      </div>
-      <span class="due-badge ${status.cls}">${status.label}</span>
-      <button class="delete-btn" data-delete="${item.id}" title="Delete">×</button>
-    </div>`;
-  }).join("");
-
-  document.querySelectorAll(".assignment-check").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const updated = loadAssignments();
-      const item = updated.find(x => x.id === btn.dataset.id);
-      if (item) item.done = !item.done;
-      saveAssignments(updated);
-      renderAssignments();
-    });
-  });
-
-  document.querySelectorAll("[data-delete]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      saveAssignments(loadAssignments().filter(x => x.id !== btn.dataset.delete));
-      renderAssignments();
-    });
-  });
-}
-
-function updateClockAndSleep() {
-  const now = new Date();
-  document.getElementById("liveClock").textContent = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-
-  const bedtime = new Date(now);
-  bedtime.setHours(22, 50, 0, 0);
-  if (now > bedtime) bedtime.setDate(bedtime.getDate() + 1);
-  document.getElementById("bedtimeCountdown").textContent = formatDuration(bedtime - now);
-}
-
-function initAssignmentForm() {
-  const form = document.getElementById("assignmentForm");
-  document.getElementById("showAssignmentForm").addEventListener("click", () => {
-    form.classList.remove("hidden");
-    document.getElementById("assignmentTitle").focus();
-  });
-  document.getElementById("cancelAssignment").addEventListener("click", () => form.classList.add("hidden"));
-  form.addEventListener("submit", e => {
-    e.preventDefault();
-    const title = document.getElementById("assignmentTitle").value.trim();
-    const course = document.getElementById("assignmentCourse").value.trim();
-    const date = document.getElementById("assignmentDate").value;
-    if (!title || !date) return;
-
-    const items = loadAssignments();
-    items.push({ id: `${Date.now()}`, title, course, date, done: false });
-    saveAssignments(items);
-    form.reset();
-    form.classList.add("hidden");
-    renderAssignments();
-  });
-}
-
-function initViewToggle() {
-  document.querySelectorAll(".toggle-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".toggle-btn").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      const dashboard = btn.dataset.view === "dashboard";
-      document.getElementById("dashboardView").classList.toggle("hidden", !dashboard);
-      document.getElementById("weekView").classList.toggle("hidden", dashboard);
-    });
-  });
-}
-
-function init() {
-  const now = new Date();
-  document.getElementById("todayName").textContent = now.toLocaleDateString("en-US", { weekday: "long" });
-  document.getElementById("todayDate").textContent = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-
-  renderCurrentBlock();
-  renderToday();
-  renderWeek();
-  renderTop3();
-  renderAssignments();
-  updateClockAndSleep();
-  initAssignmentForm();
-  initViewToggle();
-
-  document.getElementById("resetTop3").addEventListener("click", () => {
-    saveTop3([{ text: "", done: false }, { text: "", done: false }, { text: "", done: false }]);
-    renderTop3();
-  });
-
-  setInterval(() => {
-    renderCurrentBlock();
-    renderToday();
-    updateClockAndSleep();
-  }, 30000);
-}
-
-init();
+async function renderAll(){await loadDay(todayKey());renderClockParts();renderToday();renderTasks();renderAssignments();renderPomodoroCount()}
+function renderClockParts(){const now=new Date(),events=getDayEvents(todayKey());let current=null,next=null;$("#dateLine").textContent=now.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})+" • "+now.toLocaleTimeString([], {hour:"numeric",minute:"2-digit"});for(const e of events){if(now>=parse(e.start)&&now<parse(e.end))current=e;else if(!next&&parse(e.start)>now)next=e}if(current){$("#nowBlock").innerHTML=`<h2 class="now-title">${esc(current.activity)}</h2><div class="now-sub">${nice(current.start)} – ${nice(current.end)}</div><div class="countdown">${duration(parse(current.end)-now)} left</div>`}else{$("#nowBlock").innerHTML=`<h2 class="now-title">${events.length?"Open time":"Open day"}</h2><div class="now-sub">No scheduled block right now.</div>`}if(next){$("#nextBlock").textContent=next.activity;$("#nextTime").textContent=`${nice(next.start)} • in ${duration(parse(next.start)-now)}`}else{$("#nextBlock").textContent="Nothing else";$("#nextTime").textContent="for today"}let bed=parse(config.settings.bedtime);if(now>=bed)bed.setDate(bed.getDate()+1);$("#bedtimeCount").textContent=duration(bed-now)}
+function renderToday(){const key=todayKey(),events=getDayEvents(key),now=new Date();$("#todayCount").textContent=`${events.length} block${events.length===1?"":"s"}`;$("#todaySchedule").innerHTML=events.length?events.map((e,i)=>{const start=parse(e.start),end=parse(e.end),state=now>=end?"finished":now>=start&&now<end?"current":"";return `<div class="event ${esc(e.category)} ${state}"><time>${nice(e.start)}</time><i class="event-bar"></i><div><strong>${esc(e.activity)}</strong><small>${nice(e.start)} – ${nice(e.end)}</small></div><button class="event-delete" data-today-delete="${i}" title="Delete block">×</button></div>`}).join(""):`<div class="empty">Nothing planned yet.</div>`;$$('[data-today-delete]').forEach(b=>b.onclick=()=>deleteBlock(key,+b.dataset.todayDelete))}
+function setupBlocks(){$("#addBlock").onclick=()=>$("#blockForm").classList.remove("hidden");$("#cancelBlock").onclick=()=>$("#blockForm").classList.add("hidden");$("#blockForm").onsubmit=async e=>{e.preventDefault();const key=todayKey(),events=[...getDayEvents(key)],block={start:$("#blockStart").value,end:$("#blockEnd").value,activity:$("#blockActivity").value.trim(),category:$("#blockCategory").value};if(block.end<=block.start){alert("End time must be after start time.");return}events.push(block);events.sort((a,b)=>a.start.localeCompare(b.start));try{await saveDayEvents(key,events)}catch{alert("Could not save this block.");return}e.target.reset();e.target.classList.add("hidden");renderClockParts();renderToday();if(!$("#weekView").classList.contains("hidden"))renderCalendar()}}
+function setupCalendarBlocks(){$("#cancelWeekBlock").onclick=()=>$("#weekBlockForm").classList.add("hidden");$("#weekBlockForm").onsubmit=async e=>{e.preventDefault();const key=$("#weekBlockDate").value;try{await loadDay(key)}catch{}const events=[...getDayEvents(key)],block={start:$("#weekBlockStart").value,end:$("#weekBlockEnd").value,activity:$("#weekBlockActivity").value.trim(),category:$("#weekBlockCategory").value};if(block.end<=block.start){alert("End time must be after start time.");return}events.push(block);events.sort((a,b)=>a.start.localeCompare(b.start));try{await saveDayEvents(key,events)}catch{alert("Could not save this block.");return}e.target.reset();$("#weekBlockDate").value=key;e.target.classList.add("hidden");await renderCalendar();if(key===todayKey()){renderClockParts();renderToday()}}}
+function openCalendarBlock(key){const d=dateFromKey(key);$("#weekBlockDate").value=key;$("#selectedDateLabel").textContent=d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"});$("#weekBlockForm").classList.remove("hidden");$("#weekBlockActivity").focus();$("#weekBlockForm").scrollIntoView({behavior:"smooth",block:"nearest"})}
+async function deleteBlock(key,index){try{await loadDay(key)}catch{}const events=[...getDayEvents(key)];if(!events[index])return;if(!confirm(`Delete "${events[index].activity}"?`))return;events.splice(index,1);try{await saveDayEvents(key,events)}catch{alert("Could not delete this block.");return}if(key===todayKey()){renderClockParts();renderToday()}if(!$("#weekView").classList.contains("hidden"))await renderCalendar()}
+async function renderCalendar(){const y=calendarMonth.getFullYear(),m=calendarMonth.getMonth();const monthKey=`${y}-${String(m+1).padStart(2,"0")}`,prev=new Date(y,m-1,1),next=new Date(y,m+1,1);await Promise.all([loadMonth(`${prev.getFullYear()}-${String(prev.getMonth()+1).padStart(2,"0")}`),loadMonth(monthKey),loadMonth(`${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,"0")}`)]);const first=new Date(y,m,1),last=new Date(y,m+1,0),startOffset=first.getDay(),cellCount=Math.ceil((startOffset+last.getDate())/7)*7,cal=calendarCache;$("#weekRange").textContent=calendarMonth.toLocaleDateString("en-US",{month:"long",year:"numeric"});let html="";for(let i=0;i<cellCount;i++){const d=new Date(y,m,1-startOffset+i),key=dateKey(d),events=cal[key]||[],outside=d.getMonth()!==m,isToday=key===todayKey();html+=`<article class="calendar-day ${outside?"outside":""} ${isToday?"today":""}" data-date="${key}"><div class="calendar-day-head"><button type="button" class="date-button" data-add-date="${key}" title="Add block">${d.getDate()}</button>${events.length?`<span class="pill">${events.length}</span>`:""}</div><div class="calendar-events">${events.slice(0,4).map((e,idx)=>`<div class="calendar-event ${esc(e.category)}"><i class="badge ${esc(e.category)}"></i><button type="button" class="calendar-event-open" data-add-date="${key}"><span>${nice(e.start)}</span> ${esc(e.activity)}</button><button type="button" class="calendar-delete" data-cal-date="${key}" data-cal-del="${idx}" title="Delete">×</button></div>`).join("")}${events.length>4?`<button type="button" class="more-events" data-add-date="${key}">+${events.length-4} more</button>`:""}</div><button type="button" class="calendar-add" data-add-date="${key}">+ Add</button></article>`}$("#weekGrid").innerHTML=html;$$('[data-add-date]').forEach(b=>b.onclick=()=>openCalendarBlock(b.dataset.addDate));$$('[data-cal-del]').forEach(b=>b.onclick=e=>{e.stopPropagation();deleteBlock(b.dataset.calDate,+b.dataset.calDel)})}
+function setupTop3(){let data=load(LS.top3,[{text:"",done:false},{text:"",done:false},{text:"",done:false}]);const box=$("#top3");const draw=()=>{box.innerHTML=data.map((x,i)=>`<label class="priority ${x.done?"done":""}"><input type="checkbox" ${x.done?"checked":""} data-check="${i}"><span class="priority-number">${i+1}</span><input type="text" value="${esc(x.text)}" placeholder="Priority ${i+1}" data-text="${i}"></label>`).join("");$$('[data-check]').forEach(el=>el.onchange=()=>{data[+el.dataset.check].done=el.checked;save(LS.top3,data);draw()});$$('[data-text]').forEach(el=>el.oninput=()=>{data[+el.dataset.text].text=el.value;save(LS.top3,data)})};$("#clearTop3").onclick=()=>{data=[{text:"",done:false},{text:"",done:false},{text:"",done:false}];save(LS.top3,data);draw()};draw()}
+function setupTasks(){$("#addTask").onclick=()=>$("#taskForm").classList.remove("hidden");$("#cancelTask").onclick=()=>$("#taskForm").classList.add("hidden");$("#taskForm").onsubmit=e=>{e.preventDefault();const list=load(LS.tasks,[]);list.push({id:Date.now(),title:$("#taskTitle").value.trim(),done:false});save(LS.tasks,list);e.target.reset();e.target.classList.add("hidden");renderTasks()}}
+function renderTasks(){const list=load(LS.tasks,[]);$("#tasks").innerHTML=list.length?list.map(t=>`<div class="assignment ${t.done?"done":""}"><button class="check" data-task-done="${t.id}">${t.done?"✓":""}</button><div><strong>${esc(t.title)}</strong><small>Task</small></div><span></span><button class="delete" data-task-del="${t.id}">×</button></div>`).join(""):`<div class="empty">No tasks yet.</div>`;$$('[data-task-done]').forEach(b=>b.onclick=()=>{save(LS.tasks,load(LS.tasks,[]).map(t=>t.id==b.dataset.taskDone?{...t,done:!t.done}:t));renderTasks()});$$('[data-task-del]').forEach(b=>b.onclick=()=>{save(LS.tasks,load(LS.tasks,[]).filter(t=>t.id!=b.dataset.taskDel));renderTasks()})}
+function setupAssignments(){$("#addAssignment").onclick=()=>$("#assignmentForm").classList.remove("hidden");$("#cancelAssignment").onclick=()=>$("#assignmentForm").classList.add("hidden");$("#assignmentForm").onsubmit=e=>{e.preventDefault();const list=load(LS.assignments,[]);list.push({id:Date.now(),title:$("#assignmentTitle").value.trim(),course:$("#assignmentCourse").value.trim(),date:$("#assignmentDate").value,done:false});save(LS.assignments,list);e.target.reset();e.target.classList.add("hidden");renderAssignments()}}
+function dueInfo(date){const today=new Date();today.setHours(0,0,0,0);const d=new Date(date+"T00:00:00");const n=Math.round((d-today)/86400000);if(n<0)return["Overdue","urgent"];if(n===0)return["Today","urgent"];if(n===1)return["Tomorrow","soon"];if(n<=3)return[`${n} days`,"soon"];return[d.toLocaleDateString("en-US",{month:"short",day:"numeric"}),""]}
+function renderAssignments(){let list=load(LS.assignments,[]).sort((a,b)=>a.done-b.done||a.date.localeCompare(b.date));const box=$("#assignments");box.innerHTML=list.length?list.map(a=>{const [due,cls]=dueInfo(a.date);return `<div class="assignment ${a.done?"done":""}"><button class="check" data-done="${a.id}">${a.done?"✓":""}</button><div><strong>${esc(a.title)}</strong><small>${esc(a.course||"School")}</small></div><span class="due ${cls}">${due}</span><button class="delete" data-del="${a.id}">×</button></div>`}).join(""):`<div class="empty">No assignments yet.</div>`;$$('[data-done]').forEach(b=>b.onclick=()=>{let x=load(LS.assignments,[]);x=x.map(a=>a.id==b.dataset.done?{...a,done:!a.done}:a);save(LS.assignments,x);renderAssignments()});$$('[data-del]').forEach(b=>b.onclick=()=>{save(LS.assignments,load(LS.assignments,[]).filter(a=>a.id!=b.dataset.del));renderAssignments()})}
+function setupPomodoro(){const mins=config.settings.pomodoro;timerTotal=timerLeft=mins.focus*60;$$('.mode').forEach(b=>b.onclick=()=>{if(timerRunning)return;$$('.mode').forEach(x=>x.classList.remove("active"));b.classList.add("active");timerMode=b.dataset.mode;timerTotal=timerLeft=mins[timerMode]*60;paintTimer()});$("#timerStart").onclick=()=>{timerRunning?pauseTimer():startTimer()};$("#timerReset").onclick=()=>{pauseTimer();timerLeft=timerTotal;paintTimer()};paintTimer()}
+function startTimer(){if(timerLeft<=0)timerLeft=timerTotal;timerRunning=true;timerEndsAt=Date.now()+timerLeft*1000;$("#timerStart").textContent="Pause";timer=setInterval(updateTimer,250);updateTimer()}
+function updateTimer(){timerLeft=Math.max(0,Math.ceil((timerEndsAt-Date.now())/1000));paintTimer();if(timerLeft<=0)finishTimer()}
+function finishTimer(){clearInterval(timer);timer=null;timerRunning=false;timerLeft=0;$("#timerStart").textContent="Start";paintTimer();if(timerMode==="focus"){const key=todayKey(),p=load(LS.pomo,{});p[key]=(p[key]||0)+1;save(LS.pomo,p);renderPomodoroCount()}playTimerSound()}
+function pauseTimer(){if(timerRunning)timerLeft=Math.max(0,Math.ceil((timerEndsAt-Date.now())/1000));clearInterval(timer);timer=null;timerRunning=false;$("#timerStart").textContent="Start";paintTimer()}
+function playTimerSound(){try{const AudioCtx=window.AudioContext||window.webkitAudioContext,ctx=new AudioCtx();[0,.28,.56].forEach((delay,i)=>{const osc=ctx.createOscillator(),gain=ctx.createGain();osc.type="sine";osc.frequency.value=i===2?1046:880;gain.gain.setValueAtTime(.0001,ctx.currentTime+delay);gain.gain.exponentialRampToValueAtTime(.22,ctx.currentTime+delay+.02);gain.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+delay+.2);osc.connect(gain);gain.connect(ctx.destination);osc.start(ctx.currentTime+delay);osc.stop(ctx.currentTime+delay+.22)});setTimeout(()=>ctx.close(),1200)}catch{}}
+function paintTimer(){const m=Math.floor(timerLeft/60),s=timerLeft%60;$("#timerDisplay").textContent=`${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;$("#timerMode").textContent=timerMode==="focus"?"Focus":timerMode==="shortBreak"?"Short break":"Long break";document.documentElement.style.setProperty("--timer-progress",`${timerTotal?100*(1-timerLeft/timerTotal):100}%`)}
+function renderPomodoroCount(){const key=todayKey(),n=load(LS.pomo,{})[key]||0;$("#pomodoroSessions").textContent=`${n} today`}
+boot();
