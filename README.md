@@ -1,26 +1,35 @@
-# Focus Dashboard
+# Focus Dashboard — Node.js version
 
-A responsive ADHD-friendly personal dashboard built from the weekly schedule spreadsheet.
+This version uses plain Node.js only: no Express and no database.
 
-## Features
-- Current / next schedule block with live countdown
-- Today timeline + progress
-- Editable Top 3 priorities (saved in your browser)
-- Assignment/deadline tracker (saved in your browser)
-- Bedtime countdown for a 10:50 PM sleep / 6:50 AM wake target
-- Full weekly schedule view
-- Mobile-friendly layout
+## Storage
 
-## Publish free with GitHub Pages
-1. Create a GitHub repository, e.g. `focus-dashboard`.
-2. Upload `index.html`, `styles.css`, and `app.js` to the repository root.
-3. Open **Settings → Pages**.
-4. Under **Build and deployment**, select **Deploy from a branch**.
-5. Choose `main` and `/ (root)` and save.
-6. GitHub will show your public URL.
+Calendar entries are saved by the Node server as real JSON files under:
 
-## Update the fixed weekly schedule
-Edit the `schedule` object at the top of `app.js`.
+```text
+data/calendar/YYYY-MM-DD.json
+```
 
-## Important: saved tasks
-Top 3 priorities and assignments use browser `localStorage`. They stay saved on the browser/device where you entered them, but they do not sync across devices.
+Dates stay empty until you add a block. If a date has no blocks, no JSON file is required and the API returns `[]`.
+
+Top 3, quick tasks, assignments, and Pomodoro counts still use browser localStorage.
+
+## Run
+
+```bash
+npm start
+```
+
+Equivalent command:
+
+```bash
+node server.js
+```
+
+The server listens on `process.env.PORT` when provided (for Coolify) and otherwise uses port 3000.
+
+## Coolify
+
+Deploy this repository as a Node application, not as a Static site. The start command is already defined in `package.json` as `node server.js`.
+
+For persistent calendar data across redeploys, mount persistent storage to the application's `data/calendar` directory.
