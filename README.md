@@ -1,35 +1,75 @@
 # Focus Dashboard — Node.js version
 
-This version uses plain Node.js only: no Express and no database.
+This version uses **plain Node.js only**. There is no Express and no database.
 
-## Storage
+## What Node does
 
-Calendar entries are saved by the Node server as real JSON files under:
+- Serves the dashboard files.
+- Provides a small calendar API.
+- Uses Node's built-in `fs` module to save calendar days as JSON files.
+- A day with no events has no file yet; requesting it returns `[]`.
+- Adding the first event creates `data/calendar/YYYY-MM-DD.json`.
+- Deleting the last event removes that day's file again.
+
+## Project files
 
 ```text
-data/calendar/YYYY-MM-DD.json
+focus-dashboard/
+  server.js
+  package.json
+  index.html
+  style.css
+  app.js
+  schedule.json
+  data/
+    calendar/
 ```
 
-Dates stay empty until you add a block. If a date has no blocks, no JSON file is required and the API returns `[]`.
+The `data/calendar` directory is created automatically when the server starts.
 
-Top 3, quick tasks, assignments, and Pomodoro counts still use browser localStorage.
+## Run it
 
-## Run
+Install Node.js, open a terminal in the project folder, and run:
 
 ```bash
 npm start
 ```
 
-Equivalent command:
+or directly:
 
 ```bash
 node server.js
 ```
 
-The server listens on `process.env.PORT` when provided (for Coolify) and otherwise uses port 3000.
+Then open:
 
-## Coolify
+```text
+http://localhost:3000
+```
 
-Deploy this repository as a Node application, not as a Static site. The start command is already defined in `package.json` as `node server.js`.
+## Example
 
-For persistent calendar data across redeploys, mount persistent storage to the application's `data/calendar` directory.
+If you add an event on October 15, 2026, Node creates:
+
+```text
+data/calendar/2026-10-15.json
+```
+
+Example contents:
+
+```json
+[
+  {
+    "start": "14:00",
+    "end": "15:00",
+    "activity": "Web Programming",
+    "category": "school"
+  }
+]
+```
+
+## Important
+
+Do not open `index.html` directly with `file://`. Run `server.js` and access the dashboard through `http://localhost:3000`, because the calendar now uses the Node API.
+
+Top 3, Tasks, Assignments, and Pomodoro counts still use browser `localStorage`. Calendar blocks are stored on the Node server as JSON files.
